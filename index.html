@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cool Project</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        #ball {
+            width: 100px; height: 100px; background: #ff4757;
+            border-radius: 50%; position: absolute; cursor: grab;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ball">DRAG ME</div>
+
+    <script>
+        const ball = document.getElementById('ball');
+        let x = 50, y = 50, vx = 5, vy = 5;
+        let isDragging = false;
+
+        function update() {
+            if (!isDragging) {
+                x += vx; y += vy;
+                if (x + 100 > window.innerWidth || x < 0) vx *= -0.9;
+                if (y + 100 > window.innerHeight || y < 0) vy *= -0.9;
+                vy += 0.5; // Gravity
+                ball.style.left = x + 'px';
+                ball.style.top = y + 'px';
+            }
+            requestAnimationFrame(update);
+        }
+
+        ball.onmousedown = (e) => {
+            isDragging = true;
+            ball.style.cursor = 'grabbing';
+        };
+
+        window.onmousemove = (e) => {
+            if (isDragging) {
+                x = e.clientX - 50;
+                y = e.clientY - 50;
+                ball.style.left = x + 'px';
+                ball.style.top = y + 'px';
+            }
+        };
+
+        window.onmouseup = () => {
+            isDragging = false;
+            ball.style.cursor = 'grab';
+            vx = (Math.random() - 0.5) * 20; // Toss it
+            vy = (Math.random() - 0.5) * 20;
+        };
+
+        update();
+    </script>
+</body>
+</html>
