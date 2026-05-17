@@ -1,58 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Cool Project</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Interface</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
-        #ball {
-            width: 100px; height: 100px; background: #ff4757;
-            border-radius: 50%; position: absolute; cursor: grab;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; user-select: none;
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            pointer-events: none;
+            text-shadow: 0 0 10px #00ffcc;
+            z-index: 10;
+        }
+        h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
+        p { margin-top: 5px; opacity: 0.8; font-size: 14px; }
+        canvas {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div id="ball">DRAG ME</div>
+    <div id="ui-layer">
+        <h1>SYS.OVERRIDE_</h1>
+        <p>> SWIPE TO INITIATE GRID DESTRUCTION</p>
+    </div>
+    
+    <canvas id="canvas"></canvas>
 
     <script>
-        const ball = document.getElementById('ball');
-        let x = 50, y = 50, vx = 5, vy = 5;
-        let isDragging = false;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const particles = [];
+        const gridSize = 35; // Size of each voxel block
+        let cols = Math.floor(width / gridSize);
+        let rows = Math.floor(height / gridSize);
+
+        // Build the static grid
+        function initGrid() {
+            particles.length = 0;
+            cols = Math.floor(width / gridSize);
+            rows = Math.floor(height / gridSize);
+            
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    particles.push({
+                        x: i * gridSize,
+                        y: j * gridSize,
+                        w: gridSize - 2,
+                        h: gridSize - 2,
+                        vx: 0,
+                        vy: 0,
+                        isStatic: true,
+                        // Pick random neon colors (cyan, green, pink)
+                        color: `hsl(${Math.random() > 0.5 ? 160 : 320}, 100%, 60%)`
+                    });
+                }
+            }
+        }
+
+        let mouse = { x: -1000, y: -1000 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            mouse.x = e.touches[0].clientX;
+            mouse.y = e.touches[0].clientY;
+        });
 
         function update() {
-            if (!isDragging) {
-                x += vx; y += vy;
-                if (x + 100 > window.innerWidth || x < 0) vx *= -0.9;
-                if (y + 100 > window.innerHeight || y < 0) vy *= -0.9;
-                vy += 0.5; // Gravity
-                ball.style.left = x + 'px';
-                ball.style.top = y + 'px';
+            // Slight motion blur effect
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.4)'; 
+            ctx.fillRect(0, 0, width, height);
+
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+
+                // If block is still in the grid, check if mouse hits it
+                if (p.isStatic) {
+                    let dx = mouse.x - (p.x + p.w / 2);
+                    let dy = mouse.y - (p.y + p.h / 2);
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Shatter radius
+                    if (dist < 50) {
+                        p.isStatic = false;
+                        // Blast outwards from the mouse
+                        p.vx = (dx / dist) * -15 * Math.random();
+                        p.vy = (dy / dist) * -15 * Math.random();
+                    }
+                }
+
+                // Physics for shattered blocks
+                if (!p.isStatic) {
+                    p.vy += 0.6; // Gravity
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vx *= 0.99; // Air resistance
+
+                    // Floor collision
+                    if (p.y + p.h > height) {
+                        p.y = height - p.h;
+                        p.vy *= -0.6; // Bounce
+                        p.vx *= 0.8;  // Friction
+                    }
+                    
+                    // Wall collision
+                    if (p.x < 0 || p.x + p.w > width) {
+                        p.vx *= -0.8;
+                    }
+                }
+
+                // Render the blocks
+                ctx.fillStyle = p.isStatic ? '#1a1a1a' : p.color;
+                
+                // Add a glow to falling blocks
+                if (!p.isStatic) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = p.color;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fillRect(p.x, p.y, p.w, p.h);
             }
             requestAnimationFrame(update);
         }
 
-        ball.onmousedown = (e) => {
-            isDragging = true;
-            ball.style.cursor = 'grabbing';
-        };
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initGrid();
+        });
 
-        window.onmousemove = (e) => {
-            if (isDragging) {
-                x = e.clientX - 50;
-                y = e.clientY - 50;
-                ball.style.left = x + 'px';
-                ball.style.top = y + 'px';
-            }
-        };
-
-        window.onmouseup = () => {
-            isDragging = false;
-            ball.style.cursor = 'grab';
-            vx = (Math.random() - 0.5) * 20; // Toss it
-            vy = (Math.random() - 0.5) * 20;
-        };
-
+        initGrid();
         update();
     </script>
 </body>
